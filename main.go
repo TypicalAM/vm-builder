@@ -85,7 +85,7 @@ func getRuntimePaths(path string) ([]string, error) {
 }
 
 func copyPathsFromStore(store string) error {
-	cmd := exec.Command("nix", "copy", "--all", "--from", "file://"+store)
+	cmd := exec.Command("nix", "copy", "--all", "--no-check-sigs", "--from", "file://"+store)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
