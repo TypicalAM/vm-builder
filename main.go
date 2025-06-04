@@ -64,6 +64,17 @@ func buildSystemToplevel() (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
+func buildFlakeOutput(attr string) (string, error) {
+	cmd := exec.Command("nix", "build", "--no-link", "--print-out-paths", ".#"+attr)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
+}
+
 func getRuntimePaths(path string) ([]string, error) {
 	cmd := exec.Command("nix", "path-info", "-r", path)
 	var out bytes.Buffer
@@ -158,7 +169,15 @@ func createImage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if *syncTo != "" {
-		log.Println("Syncing to store:", *syncTo)
+		log.Println("Syncing runtime paths to store:", *syncTo)
+		emulationPath, err := buildFlakeOutput("emulationPackages")
+		if err != nil {
+			log.Println("Failed to build emulationPackages:", err)
+			http.Error(w, "Build emulationPackages failed", http.StatusInternalServerError)
+			return
+		}
+
+		runtimePaths = append(runtimePaths, emulationPath)
 		if err := copyPathsToStore(runtimePaths, *syncTo); err != nil {
 			log.Println("Failed to sync to store:", err)
 			http.Error(w, "Copy to store failed", http.StatusInternalServerError)
