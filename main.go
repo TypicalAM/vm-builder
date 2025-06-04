@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -85,45 +84,8 @@ func getRuntimePaths(path string) ([]string, error) {
 	return paths, nil
 }
 
-func getFilenames(path string) ([]string, error) {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var files []string
-	for _, entry := range entries {
-		if entry.Type().IsRegular() {
-			hash, _ := strings.CutSuffix(entry.Name(), ".narinfo")
-			files = append(files, hash)
-		}
-	}
-	return files, nil
-}
-
-func copyPathsFromStore(paths []string, store string) error {
-	names, err := getFilenames(store)
-	if err != nil {
-		return err
-	}
-
-	pathsIntersection := make([]string, 0, len(paths))
-	for _, path := range paths {
-		test, _ := strings.CutPrefix(path, "/nix/store/")
-		if slices.Index(names, strings.Split(test, "-")[0]) != -1 {
-			pathsIntersection = append(pathsIntersection, path)
-		}
-	}
-
-	log.Println("There are", len(pathsIntersection), "store path intersections between the evaluated system and the store")
-	if len(pathsIntersection) == 0 {
-		log.Println("Omitting store import since there are no paths to import")
-		return nil
-	}
-
-	args := []string{"copy", "--from", "file://" + store}
-	args = append(args, pathsIntersection...)
-	cmd := exec.Command("nix", args...)
+func copyPathsFromStore(store string) error {
+	cmd := exec.Command("nix", "copy", "--all", "--from", "file://"+store)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -172,6 +134,13 @@ func createImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if *syncFrom != "" {
+		log.Println("Syncing from store:", *syncFrom)
+		if err := copyPathsFromStore(*syncFrom); err != nil {
+			log.Println("Failed to sync from store:", err)
+		}
+	}
+
 	log.Println("Evaluating system.build.toplevel...")
 
 	path, err := buildSystemToplevel()
@@ -186,13 +155,6 @@ func createImage(w http.ResponseWriter, r *http.Request) {
 		log.Println("Failed to get runtime paths:", err)
 		http.Error(w, "Path-info failed", http.StatusInternalServerError)
 		return
-	}
-
-	if *syncFrom != "" {
-		log.Println("Syncing from store:", *syncFrom)
-		if err := copyPathsFromStore(runtimePaths, *syncFrom); err != nil {
-			log.Println("Failed to sync from store:", err)
-		}
 	}
 
 	if *syncTo != "" {

@@ -16,10 +16,12 @@
           autoResize = true;
         };
 
-        boot.growPartition = true;
-        boot.kernelParams = [ "console=ttyS0" ];
-        boot.loader.grub.device = "/dev/vda";
-        boot.loader.timeout = 0;
+        boot = {
+          growPartition = true;
+          kernelParams = [ "console=ttyS0" ];
+          loader.grub.device = "/dev/vda";
+          loader.timeout = 0;
+        };
       };
 
       evaluated = nixpkgs.lib.nixosSystem {
@@ -33,12 +35,13 @@
     in {
       nixosConfigurations.default = evaluated;
 
-      packages.${system}.vmImage = import "${nixpkgs}/nixos/lib/make-disk-image.nix" {
-        inherit lib;
-        config = evaluated.config;
-        pkgs = pkgs;
-        format = "qcow2";
-        diskSize = 8192;
-      };
+      packages.${system}.vmImage =
+        import "${nixpkgs}/nixos/lib/make-disk-image.nix" {
+          inherit lib;
+          config = evaluated.config;
+          pkgs = pkgs;
+          format = "qcow2-compressed";
+          diskSize = "20480M";
+        };
     };
 }
