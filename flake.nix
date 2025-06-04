@@ -41,7 +41,7 @@
           config = evaluated.config;
           pkgs = pkgs;
           format = "qcow2-compressed";
-          diskSize = "20480M";
+          diskSize = "20480";
         };
     };
 }
