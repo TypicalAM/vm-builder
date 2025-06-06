@@ -4,8 +4,8 @@ This is an upgrade to my system mentioned at [I Love Free Software 25](https://g
 
 Todo:
 
-- [ ] Do not use `/tmp/machine-config.nix`
+- [x] Do not use `/tmp/machine-config.nix`
+- [x] Place the resulting config inside of the machine
 - [ ] Deps locking
 - [ ] Minimize the vm building step packages
-- [ ] Place the resulting config inside of the machine
 - [ ] File inclusion via zip?

@@ -139,7 +139,7 @@ func createImage(w http.ResponseWriter, r *http.Request) {
 	buildMtx.Lock()
 	defer buildMtx.Unlock()
 
-	if err = os.WriteFile("/tmp/machine-config.nix", cfg, 0600); err != nil {
+	if err = os.WriteFile("machine-config.nix", cfg, 0600); err != nil {
 		log.Println("Write config error:", err)
 		http.Error(w, "Server error", http.StatusInternalServerError)
 		return

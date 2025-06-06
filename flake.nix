@@ -9,26 +9,21 @@
       pkgs = import nixpkgs { inherit system; };
       lib = pkgs.lib;
 
-      bootConfig = { ... }: {
-        fileSystems."/" = {
-          device = "/dev/disk/by-label/nixos";
-          fsType = "ext4";
-          autoResize = true;
-        };
-
-        boot = {
-          growPartition = true;
-          kernelParams = [ "console=ttyS0" ];
-          loader.grub.device = "/dev/vda";
-          loader.timeout = 0;
-        };
-      };
+      guestConfigFile = pkgs.writeText "config-for-image.nix" ''
+        { config, pkgs, lib, ... }: {
+          imports = [
+            ./boot-config.nix
+            ./machine-config.nix
+            <nixpkgs/nixos/modules/profiles/qemu-guest.nix>
+          ];
+        }
+      '';
 
       evaluated = nixpkgs.lib.nixosSystem {
         inherit system;
         modules = [
-          bootConfig
-          /tmp/machine-config.nix
+          ./boot-config.nix
+          ./machine-config.nix
           <nixpkgs/nixos/modules/profiles/qemu-guest.nix>
         ];
       };
@@ -167,9 +162,22 @@
         vmImage = import "${nixpkgs}/nixos/lib/make-disk-image.nix" {
           inherit lib;
           config = evaluated.config;
+          configFile = guestConfigFile;
           pkgs = pkgs;
           format = "qcow2-compressed";
           diskSize = "20480";
+          contents = [
+            {
+              source = ./boot-config.nix;
+              target = "/etc/nixos/boot-config.nix";
+              mode = "0644";
+            }
+            {
+              source = ./machine-config.nix;
+              target = "/etc/nixos/machine-config.nix";
+              mode = "0644";
+            }
+          ];
         };
       };
     };
